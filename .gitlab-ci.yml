@@ -1,0 +1,45 @@
+# Define stages of the pipeline
+stages:
+  - build
+  - test
+  - deploy
+
+# Cache Gradle dependencies to speed up future builds
+cache:
+  paths:
+    - ~/.gradle/caches/
+    - ~/.gradle/wrapper/
+
+# Build stage - Compile and package the Spring Boot project
+build:
+  stage: build
+  image: gradle:7.0-jdk11 # Gradle image with JDK 11 (adjust if you use a different JDK version)
+  script:
+    - gradle clean build -x test # Skip tests during the build stage to save time
+  artifacts:
+    paths:
+      - build/libs/*.jar # Store the generated JAR file for the next stages
+
+# Test stage - Run unit tests using Gradle
+test:
+  stage: test
+  image: gradle:7.0-jdk11 # Gradle image with JDK 11
+  script:
+    - gradle test # Run unit tests
+  artifacts:
+    paths:
+      - build/test-results/test/*.xml # Store test results for later review
+  dependencies:
+    - build # Make sure the build stage runs first
+
+# Deploy stage - Deploy the built JAR to a remote server
+deploy:
+  stage: deploy
+  image: gradle:7.0-jdk11 # Using Gradle image with JDK 11 for consistency
+  script:
+    - echo "Deploying Spring Boot app to server"
+    # Example deployment to a server using SCP and SSH:
+    - scp build/libs/*.jar user@your-server:/path/to/deploy/
+    - ssh user@your-server 'java -jar /path/to/deploy/*.jar &' # Run the Spring Boot app in the background
+  only:
+    - main # Deploy only when changes are pushed to the 'main' branch
